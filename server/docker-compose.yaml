@@ -1,0 +1,13 @@
+version: "3.7"
+
+services:
+  mario:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: mario
+    restart: always
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./:/app
