@@ -34,6 +34,12 @@ type Level struct {
 	Backgrounds []Background `json:"backgrounds"`
 }
 
+type Mario struct {
+	Position Position `json:"position"`
+	Width    int      `json:"width"`
+	Height   int      `json:"height"`
+}
+
 func GinMiddleware(allowOrigin string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", allowOrigin)
@@ -90,10 +96,14 @@ func main() {
 	}
 
 	server.OnEvent("/", "setup", func(s socketio.Conn, msg string) {
-		log.Println(level.Backgrounds)
 		for _, bg := range level.Backgrounds {
 			s.Emit("setup", bg)
 		}
+	})
+
+	server.OnEvent("/", "mario", func(s socketio.Conn, msg string) {
+		mario := Mario{Position: Position{X: 276, Y: 44}, Width: 16, Height: 16}
+		s.Emit("mario", mario)
 	})
 
 	server.OnError("/", func(s socketio.Conn, e error) {
