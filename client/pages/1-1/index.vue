@@ -20,6 +20,7 @@ export default {
   },
   created() {
     socket.emit('setup')
+    socket.emit('mario')
   },
   mounted() {
     this.$refs.bg.width = window.innerWidth
@@ -41,9 +42,26 @@ export default {
           this.tileSize
         )
         data.ranges.forEach((range) => {
-          this.drawBG(this.background.getContext('2d'), block, range)
+          this.drawBG(block, range)
         })
         this.screen.context.drawImage(this.background, 0, 0)
+      })
+    })
+
+    this.loadImage(require('@/assets/images/characters.gif')).then((image) => {
+      socket.on('mario', (mario) => {
+        const buffer = this.draw(
+          image,
+          mario.position.x,
+          mario.position.y,
+          mario.width,
+          mario.height
+        )
+        this.screen.context.drawImage(
+          buffer,
+          0 + mario.width,
+          130 + mario.height
+        )
       })
     })
   },
@@ -70,28 +88,12 @@ export default {
         .drawImage(image, x, y, width, height, 0, 0, width, height)
       return buffer
     },
-    drawBG(bg, block, boundary) {
+    drawBG(block, boundary) {
       for (let i = boundary.x1; i < boundary.x2; i++) {
         for (let j = boundary.y1; j < boundary.y2; j++) {
           this.screen.context.drawImage(block, i * 16, j * 16)
         }
       }
-    },
-    buildMario(mario) {
-      this.loadImage(require('@/assets/images/characters.gif')).then(
-        (image) => {
-          const buffer = this.draw(
-            image,
-            mario.position.x,
-            mario.position.y,
-            mario.width,
-            mario.height
-          )
-          this.background
-            .getContext('2d')
-            .drawImage(buffer, 0 + mario.width, 130 + mario.height)
-        }
-      )
     },
   },
 }
