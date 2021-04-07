@@ -15,8 +15,7 @@ export default {
         context: {},
       },
       background: {},
-      width: 16,
-      height: 16,
+      tileSize: 16,
     }
   },
   created() {
@@ -28,24 +27,23 @@ export default {
     this.screen.context = this.$refs.bg.getContext('2d')
     this.background = this.getCanvas(window.innerWidth, window.innerHeight)
 
-    socket.on('setup', (data) => {
-      const tileSize = 16
-      this.loadImage(require('@/assets/images/bg_tiles.png')).then((image) => {
+    this.loadImage(require('@/assets/images/bg_tiles.png')).then((image) => {
+      socket.on('setup', (data) => {
         const block = this.draw(
           image,
-          data.position.x * tileSize,
-          data.position.y * tileSize,
-          tileSize,
-          tileSize,
+          data.position.x * this.tileSize,
+          data.position.y * this.tileSize,
+          this.tileSize,
+          this.tileSize,
           0,
           0,
-          tileSize,
-          tileSize
+          this.tileSize,
+          this.tileSize
         )
-        for (const range of data.ranges) {
+        data.ranges.forEach((range) => {
           this.drawBG(this.background.getContext('2d'), block, range)
-          this.screen.context.drawImage(this.background, 0, 0)
-        }
+        })
+        this.screen.context.drawImage(this.background, 0, 0)
       })
     })
   },
@@ -75,28 +73,23 @@ export default {
     drawBG(bg, block, boundary) {
       for (let i = boundary.x1; i < boundary.x2; i++) {
         for (let j = boundary.y1; j < boundary.y2; j++) {
-          bg.drawImage(block, i * 16, j * 16)
+          this.screen.context.drawImage(block, i * 16, j * 16)
         }
       }
     },
-    buildMario(mario, position) {
+    buildMario(mario) {
       this.loadImage(require('@/assets/images/characters.gif')).then(
         (image) => {
           const buffer = this.draw(
             image,
-            mario.x,
-            mario.y,
+            mario.position.x,
+            mario.position.y,
             mario.width,
             mario.height
           )
           this.background
             .getContext('2d')
-            .drawImage(
-              buffer,
-              position.x + mario.width,
-              position.y + mario.height
-            )
-          this.screen.context.drawImage(this.background, 0, 0)
+            .drawImage(buffer, 0 + mario.width, 130 + mario.height)
         }
       )
     },
