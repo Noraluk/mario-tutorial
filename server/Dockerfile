@@ -9,13 +9,17 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -a -o mario .
+RUN CGO_ENABLED=0 GOOS=linux go build -a -o server .
 
 
 # generate clean, final image for end users
 FROM alpine:3.12
-COPY --from=builder /build/mario .
+
+WORKDIR /app
+
+COPY --from=builder /build/server /app/server
+COPY static static
 
 EXPOSE 8080
 # executable
-ENTRYPOINT [ "./mario" ]
+ENTRYPOINT [ "./server" ]

@@ -1,44 +1,15 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"os"
+	"server/mario"
+
+	bg_service "server/background/services"
 
 	"github.com/gin-gonic/gin"
-
 	socketio "github.com/googollee/go-socket.io"
 )
-
-type Ranges struct {
-	X1 int `json:"x1"`
-	X2 int `json:"x2"`
-	Y1 int `json:"y1"`
-	Y2 int `json:"y2"`
-}
-
-type Position struct {
-	X int `json:"x"`
-	Y int `json:"y"`
-}
-
-type Background struct {
-	Tile     string   `json:"tile"`
-	Position Position `json:"position"`
-	Ranges   []Ranges `json:"ranges"`
-}
-
-type Level struct {
-	Backgrounds []Background `json:"backgrounds"`
-}
-
-type Mario struct {
-	Position Position `json:"position"`
-	Width    int      `json:"width"`
-	Height   int      `json:"height"`
-}
 
 func GinMiddleware(allowOrigin string) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -59,6 +30,7 @@ func GinMiddleware(allowOrigin string) gin.HandlerFunc {
 }
 
 func main() {
+	bgService := bg_service.New()
 	router := gin.New()
 
 	server, err := socketio.NewServer(nil)
@@ -77,32 +49,20 @@ func main() {
 		s.Emit("reply", "have "+msg)
 	})
 
-	oneToOne, err := os.Open("static/levels/1-1.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer oneToOne.Close()
-
-	byteValue, err := ioutil.ReadAll(oneToOne)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	var level Level
-
-	err = json.Unmarshal(byteValue, &level)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	server.OnEvent("/", "setup", func(s socketio.Conn, msg string) {
-		for _, bg := range level.Backgrounds {
-			s.Emit("setup", bg)
+		level, err := bgService.GetBackground()
+		if err != nil {
+			log.Fatal(err)
 		}
+		err = bgService.Setup(level.Backgrounds)
+		if err != nil {
+			log.Fatal(err)
+		}
+		s.Emit("setup", level.Backgrounds)
 	})
 
 	server.OnEvent("/", "mario", func(s socketio.Conn, msg string) {
-		mario := Mario{Position: Position{X: 276, Y: 44}, Width: 16, Height: 16}
+		mario := mario.Model{X: 276, Y: 44, Width: 16, Height: 16}
 		s.Emit("mario", mario)
 	})
 

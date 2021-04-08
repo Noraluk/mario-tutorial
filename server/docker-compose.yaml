@@ -4,10 +4,31 @@ services:
   mario:
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     container_name: mario
-    restart: always
+    # restart: always
+    depends_on:
+      - redis
     ports:
       - "8080:8080"
+    # volumes:
+    #   - ./:/app
+    # networks:
+    #   - chat-networks
+
+  redis:
+    image: redis
+    container_name: redis
+    command: ["redis-server", "--bind", "redis", "--port", "6379"]
     volumes:
-      - ./:/app
+      - red_data:/var/lib/redis
+    ports:
+      - "6379:6379"
+    # networks:
+    #   - chat-networks
+
+# networks:
+#   chat-networks:
+#     driver: bridge
+volumes:
+  red_data: {}
