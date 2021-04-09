@@ -30,21 +30,35 @@ export default {
 
     this.loadImage(require('@/assets/images/bg_tiles.png')).then((image) => {
       socket.on('setup', (data) => {
-        const block = this.draw(
-          image,
-          data.position.x * this.tileSize,
-          data.position.y * this.tileSize,
-          this.tileSize,
-          this.tileSize,
-          0,
-          0,
+        data.forEach((e) => {
+          const block = this.draw(
+            image,
+            e.position.x * this.tileSize,
+            e.position.y * this.tileSize,
+            this.tileSize,
+            this.tileSize,
+            0,
+            0,
+            this.tileSize,
+            this.tileSize
+          )
+          e.ranges.forEach((range) => {
+            this.drawBG(block, range)
+          })
+        })
+        this.screen.context.drawImage(this.background, 0, 0)
+      })
+
+      socket.on('collider', (data) => {
+        this.screen.context.strokeStyle = 'red'
+        this.screen.context.beginPath()
+        this.screen.context.rect(
+          data.x * this.tileSize,
+          data.y * this.tileSize,
           this.tileSize,
           this.tileSize
         )
-        data.ranges.forEach((range) => {
-          this.drawBG(block, range)
-        })
-        this.screen.context.drawImage(this.background, 0, 0)
+        this.screen.context.stroke()
       })
     })
 
@@ -52,16 +66,17 @@ export default {
       socket.on('mario', (mario) => {
         const buffer = this.draw(
           image,
-          mario.position.x,
-          mario.position.y,
+          mario.x,
+          mario.y,
           mario.width,
           mario.height
         )
         this.screen.context.drawImage(
           buffer,
-          0 + mario.width,
-          130 + mario.height
+          mario.position.x + mario.width,
+          mario.position.y + mario.height
         )
+        socket.emit('mario')
       })
     })
   },
