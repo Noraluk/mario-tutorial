@@ -1,10 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"server/mario"
+	rd "server/redis"
+	"strings"
 
+	bg_entity "server/background/entities"
 	bg_service "server/background/services"
 
 	"github.com/gin-gonic/gin"
@@ -31,6 +35,7 @@ func GinMiddleware(allowOrigin string) gin.HandlerFunc {
 
 func main() {
 	bgService := bg_service.New()
+	redis := rd.New()
 	router := gin.New()
 
 	server, err := socketio.NewServer(nil)
@@ -54,16 +59,25 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		err = bgService.Setup(level.Backgrounds)
+		s.Emit("setup", level.Backgrounds)
+		err = bgService.Setup(level.Backgrounds, s)
 		if err != nil {
 			log.Fatal(err)
 		}
-		s.Emit("setup", level.Backgrounds)
+
 	})
 
+	mario := mario.Model{X: 276, Y: 44, Width: 16, Height: 16, Position: bg_entity.Position{X: 0, Y: 0}}
 	server.OnEvent("/", "mario", func(s socketio.Conn, msg string) {
-		mario := mario.Model{X: 276, Y: 44, Width: 16, Height: 16}
-		s.Emit("mario", mario)
+		b, err := json.Marshal(bg_entity.TileCollider{Level: "1-1", Tile: bg_entity.Position{X: mario.Position.X, Y: mario.Position.Y + 16}})
+		if err != nil {
+			log.Fatal(err)
+		}
+		result, _ := redis.Get(string(b))
+		if strings.Compare(result, "ground") != 0 {
+			s.Emit("mario", mario)
+			mario.Position.Y++
+		}
 	})
 
 	server.OnError("/", func(s socketio.Conn, e error) {
