@@ -4,15 +4,15 @@ services:
   mario:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: mario
     # restart: always
     depends_on:
       - redis
     ports:
       - "8080:8080"
-    # volumes:
-    #   - ./:/app
+    volumes:
+      - ./:/app
     # networks:
     #   - chat-networks
 
