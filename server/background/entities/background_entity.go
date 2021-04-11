@@ -1,4 +1,4 @@
-package bg_entity
+package bgEntity
 
 type Ranges struct {
 	X1 int `json:"x1"`
@@ -23,6 +23,6 @@ type Level struct {
 }
 
 type TileCollider struct {
-	Level string   `json:"name"`
-	Tile  Position `json:"tile"`
+	Name string   `json:"name"`
+	Tile Position `json:"tile"`
 }

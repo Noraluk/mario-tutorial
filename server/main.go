@@ -1,19 +1,24 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
-	"server/mario"
-	rd "server/redis"
-	"strings"
 
-	bg_entity "server/background/entities"
-	bg_service "server/background/services"
+	bgEntity "server/background/entities"
+	bgService "server/background/services"
+	"server/config"
+	"server/constants"
+	marioEntity "server/mario/entities"
+	marioService "server/mario/services"
 
 	"github.com/gin-gonic/gin"
 	socketio "github.com/googollee/go-socket.io"
 )
+
+type Screen struct {
+	Background []bgEntity.Background   `json:"backgrounds"`
+	Colliders  []bgEntity.TileCollider `json:"colliders"`
+}
 
 func GinMiddleware(allowOrigin string) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -34,8 +39,9 @@ func GinMiddleware(allowOrigin string) gin.HandlerFunc {
 }
 
 func main() {
-	bgService := bg_service.New()
-	redis := rd.New()
+	config := config.New()
+	backgroundService := bgService.New(config)
+	marioService := marioService.New(config)
 	router := gin.New()
 
 	server, err := socketio.NewServer(nil)
@@ -54,29 +60,46 @@ func main() {
 		s.Emit("reply", "have "+msg)
 	})
 
+	var mario *marioEntity.Mario
 	server.OnEvent("/", "setup", func(s socketio.Conn, msg string) {
-		level, err := bgService.GetBackground()
+		mario = &marioEntity.Mario{X: 276, Y: 44, Width: 16, Height: 16, Position: bgEntity.Position{X: 0, Y: 0}, Velocity: marioEntity.Velocity{X: 5, Y: 1}}
+		err = backgroundService.Setup()
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("setup error ", err.Error())
 		}
-		s.Emit("setup", level.Backgrounds)
-		err = bgService.Setup(level.Backgrounds, s)
-		if err != nil {
-			log.Fatal(err)
-		}
-
 	})
 
-	mario := mario.Model{X: 276, Y: 44, Width: 16, Height: 16, Position: bg_entity.Position{X: 0, Y: 0}}
-	server.OnEvent("/", "mario", func(s socketio.Conn, msg string) {
-		b, err := json.Marshal(bg_entity.TileCollider{Level: "1-1", Tile: bg_entity.Position{X: mario.Position.X, Y: mario.Position.Y + 16}})
+	server.OnEvent("/", "draw", func(s socketio.Conn, msg string) {
+		level, err := backgroundService.GetBackground()
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("err ", err.Error())
 		}
-		result, _ := redis.Get(string(b))
-		if strings.Compare(result, "ground") != 0 {
-			s.Emit("mario", mario)
-			mario.Position.Y++
+		screen := Screen{Background: level.Backgrounds, Colliders: backgroundService.GetColliders()}
+
+		canFall := marioService.CanFall(mario)
+		mario.Position.Y += mario.Velocity.Y
+		if !canFall {
+			mario.Position.Y = mario.Position.Y - (mario.Position.Y % constants.TILE_SILE)
+		}
+
+		s.Emit("draw", screen)
+		s.Emit("drawMario", mario)
+	})
+
+	server.OnEvent("/", "right", func(s socketio.Conn, msg string) {
+		mario.Position.X += mario.Velocity.X
+		marioService.MoveHorizontal(mario)
+	})
+
+	server.OnEvent("/", "left", func(s socketio.Conn, msg string) {
+		mario.Position.X -= mario.Velocity.X
+		marioService.MoveHorizontal(mario)
+	})
+
+	server.OnEvent("/", "up", func(s socketio.Conn, msg string) {
+		canFall := marioService.CanFall(mario)
+		if !canFall {
+			mario.Position.Y -= 40
 		}
 	})
 
