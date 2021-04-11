@@ -20,7 +20,7 @@ export default {
   },
   created() {
     socket.emit('setup')
-    socket.emit('mario')
+    socket.emit('draw')
   },
   mounted() {
     this.$refs.bg.width = window.innerWidth
@@ -29,8 +29,8 @@ export default {
     this.background = this.getCanvas(window.innerWidth, window.innerHeight)
 
     this.loadImage(require('@/assets/images/bg_tiles.png')).then((image) => {
-      socket.on('setup', (data) => {
-        data.forEach((e) => {
+      socket.on('draw', (data) => {
+        data.backgrounds.forEach((e) => {
           const block = this.draw(
             image,
             e.position.x * this.tileSize,
@@ -46,24 +46,27 @@ export default {
             this.drawBG(block, range)
           })
         })
-        this.screen.context.drawImage(this.background, 0, 0)
-      })
 
-      socket.on('collider', (data) => {
-        this.screen.context.strokeStyle = 'red'
-        this.screen.context.beginPath()
-        this.screen.context.rect(
-          data.x * this.tileSize,
-          data.y * this.tileSize,
-          this.tileSize,
-          this.tileSize
-        )
-        this.screen.context.stroke()
+        data.colliders.forEach((collider) => {
+          this.background.getContext('2d').strokeStyle = 'red'
+          if (collider.name === 'ground') {
+            this.background.getContext('2d').beginPath()
+            this.background
+              .getContext('2d')
+              .rect(
+                collider.tile.x,
+                collider.tile.y,
+                this.tileSize,
+                this.tileSize
+              )
+            this.background.getContext('2d').stroke()
+          }
+        })
       })
     })
 
     this.loadImage(require('@/assets/images/characters.gif')).then((image) => {
-      socket.on('mario', (mario) => {
+      socket.on('drawMario', (mario) => {
         const buffer = this.draw(
           image,
           mario.x,
@@ -71,13 +74,37 @@ export default {
           mario.width,
           mario.height
         )
-        this.screen.context.drawImage(
-          buffer,
-          mario.position.x + mario.width,
-          mario.position.y + mario.height
-        )
-        socket.emit('mario')
+        this.background
+          .getContext('2d')
+          .drawImage(buffer, mario.position.x, mario.position.y)
+        this.background.getContext('2d').strokeStyle = 'blue'
+        this.background.getContext('2d').beginPath()
+        this.background
+          .getContext('2d')
+          .rect(
+            mario.position.x,
+            mario.position.y,
+            this.tileSize,
+            this.tileSize
+          )
+        this.background.getContext('2d').stroke()
+        this.screen.context.drawImage(this.background, 0, 0)
+        socket.emit('draw')
       })
+    })
+
+    window.addEventListener('keydown', function (e) {
+      switch (e.code) {
+        case 'KeyD':
+          socket.emit('right')
+          break
+        case 'KeyA':
+          socket.emit('left')
+          break
+        case 'KeyW':
+          socket.emit('up')
+          break
+      }
     })
   },
   methods: {
@@ -106,7 +133,7 @@ export default {
     drawBG(block, boundary) {
       for (let i = boundary.x1; i < boundary.x2; i++) {
         for (let j = boundary.y1; j < boundary.y2; j++) {
-          this.screen.context.drawImage(block, i * 16, j * 16)
+          this.background.getContext('2d').drawImage(block, i * 16, j * 16)
         }
       }
     },
