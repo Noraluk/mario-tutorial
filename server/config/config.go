@@ -7,6 +7,7 @@ import (
 type Config interface {
 	SetCollider(position bgEntity.Position, tileName string)
 	GetCollider(position bgEntity.Position) string
+	GetColliders() map[bgEntity.Position]string
 }
 
 type config struct {
@@ -26,4 +27,8 @@ func (c *config) SetCollider(position bgEntity.Position, tileName string) {
 
 func (c *config) GetCollider(position bgEntity.Position) string {
 	return c.Colliders[position]
+}
+
+func (c *config) GetColliders() map[bgEntity.Position]string {
+	return c.Colliders
 }

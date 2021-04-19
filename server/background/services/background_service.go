@@ -6,24 +6,19 @@ import (
 	"os"
 	bgEntity "server/background/entities"
 	"server/config"
+	"server/constants"
 	rd "server/redis"
 )
 
-const tileSize int = 16
-
 var (
 	colliders []bgEntity.TileCollider
-	col       map[bgEntity.Position]string
 )
 
 type Background interface {
 	Setup() error
 	GetBackground() (*bgEntity.Level, error)
-	// GetPositions() []bgEntity.Position
-	// SetPositions(colliders []bgEntity.Position)
 	GetColliders() []bgEntity.TileCollider
 	SetColliders(colliders []bgEntity.TileCollider)
-	// Get(position bgEntity.Position) string
 }
 
 type background struct {
@@ -44,21 +39,16 @@ func (s *background) Setup() error {
 		return err
 	}
 
-	newColliders := []bgEntity.TileCollider{}
 	for _, bg := range level.Backgrounds {
 		for _, val := range bg.Ranges {
-			for x := val.X1; x < val.X2; x++ {
-				for y := val.Y1; y < val.Y2; y++ {
-					position := bgEntity.Position{X: (x) * tileSize, Y: (y) * tileSize}
-					collider := bgEntity.TileCollider{Name: bg.Tile, Tile: position}
-
-					newColliders = append(newColliders, collider)
+			for x := val.X1 * constants.TILE_SILE; x <= val.X2*constants.TILE_SILE; x++ {
+				for y := val.Y1 * constants.TILE_SILE; y <= val.Y2*constants.TILE_SILE; y++ {
+					position := bgEntity.Position{X: float64(x), Y: float64(y)}
 					s.config.SetCollider(position, bg.Tile)
 				}
 			}
 		}
 	}
-	s.SetColliders(newColliders)
 	return nil
 }
 

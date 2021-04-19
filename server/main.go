@@ -7,7 +7,6 @@ import (
 	bgEntity "server/background/entities"
 	bgService "server/background/services"
 	"server/config"
-	"server/constants"
 	marioEntity "server/mario/entities"
 	marioService "server/mario/services"
 
@@ -18,6 +17,15 @@ import (
 type Screen struct {
 	Background []bgEntity.Background   `json:"backgrounds"`
 	Colliders  []bgEntity.TileCollider `json:"colliders"`
+}
+
+func getScreen(backgroundService bgService.Background) Screen {
+	level, err := backgroundService.GetBackground()
+	if err != nil {
+		log.Fatal(err)
+	}
+	screen := Screen{Background: level.Backgrounds, Colliders: backgroundService.GetColliders()}
+	return screen
 }
 
 func GinMiddleware(allowOrigin string) gin.HandlerFunc {
@@ -62,44 +70,58 @@ func main() {
 
 	var mario *marioEntity.Mario
 	server.OnEvent("/", "setup", func(s socketio.Conn, msg string) {
-		mario = &marioEntity.Mario{X: 276, Y: 44, Width: 16, Height: 16, Position: bgEntity.Position{X: 0, Y: 0}, Velocity: marioEntity.Velocity{X: 5, Y: 1}}
+		mario = &marioEntity.Mario{X: 276, Y: 44, Width: 16, Height: 16, Position: bgEntity.Position{X: 0, Y: 0}, Velocity: marioEntity.Velocity{X: 0, Y: 0.1}}
 		err = backgroundService.Setup()
 		if err != nil {
 			log.Fatal("setup error ", err.Error())
 		}
-	})
-
-	server.OnEvent("/", "draw", func(s socketio.Conn, msg string) {
-		level, err := backgroundService.GetBackground()
-		if err != nil {
-			log.Fatal("err ", err.Error())
-		}
-		screen := Screen{Background: level.Backgrounds, Colliders: backgroundService.GetColliders()}
-
-		canFall := marioService.CanFall(mario)
-		mario.Position.Y += mario.Velocity.Y
-		if !canFall {
-			mario.Position.Y = mario.Position.Y - (mario.Position.Y % constants.TILE_SILE)
-		}
-
-		s.Emit("draw", screen)
+		s.Emit("draw", getScreen(backgroundService))
 		s.Emit("drawMario", mario)
 	})
 
-	server.OnEvent("/", "right", func(s socketio.Conn, msg string) {
+	server.OnEvent("/", "draw", func(s socketio.Conn, msg string) {
+		mario.SetCorner(config)
+
+		mario.Velocity.Y += 0.05
+		if mario.Velocity.Y > 0 {
+			marioService.CanFall(mario)
+			mario.Action = ""
+		} else {
+			marioService.IsCeiling(mario)
+		}
+
 		mario.Position.X += mario.Velocity.X
-		marioService.MoveHorizontal(mario)
+		mario.Position.Y += mario.Velocity.Y
+
+		if mario.Velocity.X != 0 || mario.Velocity.Y != 0 || mario.Action == "jump" {
+			s.Emit("draw", getScreen(backgroundService))
+			s.Emit("drawMario", mario)
+		}
+
+		mario.Velocity.X = 0
+	})
+
+	server.OnEvent("/", "right", func(s socketio.Conn, msg string) {
+		mario.SetCorner(config)
+		marioService.MoveRight(mario)
+		s.Emit("draw", getScreen(backgroundService))
+		s.Emit("drawMario", mario)
 	})
 
 	server.OnEvent("/", "left", func(s socketio.Conn, msg string) {
-		mario.Position.X -= mario.Velocity.X
-		marioService.MoveHorizontal(mario)
+		mario.SetCorner(config)
+		marioService.MoveLeft(mario)
+		s.Emit("draw", getScreen(backgroundService))
+		s.Emit("drawMario", mario)
 	})
 
 	server.OnEvent("/", "up", func(s socketio.Conn, msg string) {
 		canFall := marioService.CanFall(mario)
 		if !canFall {
-			mario.Position.Y -= 40
+			mario.Velocity.Y = -2
+			mario.Action = "jump"
+			s.Emit("draw", getScreen(backgroundService))
+			s.Emit("drawMario", mario)
 		}
 	})
 
