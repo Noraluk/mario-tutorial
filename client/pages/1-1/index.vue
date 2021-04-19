@@ -20,7 +20,6 @@ export default {
   },
   created() {
     socket.emit('setup')
-    socket.emit('draw')
   },
   mounted() {
     this.$refs.bg.width = window.innerWidth
@@ -43,24 +42,8 @@ export default {
             this.tileSize
           )
           e.ranges.forEach((range) => {
-            this.drawBG(block, range)
+            this.drawBG(block, range, e.tile)
           })
-        })
-
-        data.colliders.forEach((collider) => {
-          this.background.getContext('2d').strokeStyle = 'red'
-          if (collider.name === 'ground') {
-            this.background.getContext('2d').beginPath()
-            this.background
-              .getContext('2d')
-              .rect(
-                collider.tile.x,
-                collider.tile.y,
-                this.tileSize,
-                this.tileSize
-              )
-            this.background.getContext('2d').stroke()
-          }
         })
       })
     })
@@ -130,10 +113,18 @@ export default {
         .drawImage(image, x, y, width, height, 0, 0, width, height)
       return buffer
     },
-    drawBG(block, boundary) {
+    drawBG(block, boundary, tile) {
       for (let i = boundary.x1; i < boundary.x2; i++) {
         for (let j = boundary.y1; j < boundary.y2; j++) {
           this.background.getContext('2d').drawImage(block, i * 16, j * 16)
+          if (tile === 'ground') {
+            this.background.getContext('2d').strokeStyle = 'red'
+            this.background.getContext('2d').beginPath()
+            this.background
+              .getContext('2d')
+              .rect(i * 16, j * 16, this.tileSize, this.tileSize)
+            this.background.getContext('2d').stroke()
+          }
         }
       }
     },
