@@ -118,7 +118,7 @@ func main() {
 	server.OnEvent("/", "up", func(s socketio.Conn, msg string) {
 		canFall := marioService.CanFall(mario)
 		if !canFall {
-			mario.Velocity.Y = -2
+			mario.Velocity.Y = -2.5
 			mario.Action = "jump"
 			s.Emit("draw", getScreen(backgroundService))
 			s.Emit("drawMario", mario)

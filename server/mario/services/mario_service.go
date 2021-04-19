@@ -76,28 +76,62 @@ func (s *mario) IsCeiling(mario *marioEntity.Mario) bool {
 
 func (s *mario) MoveRight(mario *marioEntity.Mario) {
 	mario.Velocity.X = 5
-	nextX := int(mario.Corner.CenterRight.X + mario.Velocity.X)
-	nextP := bgEntity.Position{X: float64(nextX), Y: mario.Corner.CenterRight.Y}
-	nextTile := s.config.GetCollider(nextP)
-	if mario.Corner.CenterRightTile == constants.SKY && nextTile == constants.GROUND {
-		mario.Velocity.X = (nextP.X - float64(int(nextP.X)%constants.TILE_SILE)) - (mario.Position.X + mario.Width)
-	} else if mario.Corner.CenterRightTile == constants.GROUND {
+
+	currentPixelGroundCount := 0
+	for y := int(mario.Corner.TopRight.Y); y <= int(mario.Corner.BottomRight.Y); y++ {
+		tile := s.config.GetCollider(bgEntity.Position{X: mario.Corner.TopRight.X, Y: float64(y)})
+		if tile == constants.GROUND {
+			currentPixelGroundCount++
+		}
+	}
+	if currentPixelGroundCount > 2 {
 		mario.Velocity.X = 0
+	}
+
+	nextX := int(mario.Corner.TopRight.X + mario.Velocity.X)
+	nextPixelGroundCount := 0
+	for y := int(mario.Corner.TopRight.Y); y <= int(mario.Corner.BottomRight.Y); y++ {
+		tile := s.config.GetCollider(bgEntity.Position{X: float64(nextX), Y: float64(y)})
+		if tile == constants.GROUND {
+			nextPixelGroundCount++
+		}
+	}
+	if nextPixelGroundCount > 2 {
+		remainder := nextX % constants.TILE_SILE
+		distance := float64(nextX-remainder) - (mario.Position.X + mario.Width)
+		mario.Velocity.X = distance
 	}
 }
 
 func (s *mario) MoveLeft(mario *marioEntity.Mario) {
 	mario.Velocity.X = -5
-	prevX := int(mario.Corner.CenterLeft.X + mario.Velocity.X)
-	prevP := bgEntity.Position{X: float64(prevX), Y: mario.Corner.CenterLeft.Y}
-	prevTile := s.config.GetCollider(prevP)
-	if mario.Corner.CenterLeftTile == constants.SKY && prevTile == constants.GROUND {
-		if int(prevP.X)%constants.TILE_SILE == 0 {
-			mario.Velocity.X = prevP.X - mario.Position.X
-		} else {
-			mario.Velocity.X = (prevP.X + (constants.TILE_SILE - float64(int(prevP.X)%constants.TILE_SILE))) - mario.Position.X
+
+	currentPixelGroundCount := 0
+	for y := int(mario.Corner.TopLeft.Y); y <= int(mario.Corner.BottomLeft.Y); y++ {
+		tile := s.config.GetCollider(bgEntity.Position{X: mario.Corner.TopLeft.X, Y: float64(y)})
+		if tile == constants.GROUND {
+			currentPixelGroundCount++
 		}
-	} else if mario.Corner.CenterLeftTile == constants.GROUND {
+	}
+	if currentPixelGroundCount > 2 {
 		mario.Velocity.X = 0
+	}
+
+	prevX := int(mario.Corner.TopLeft.X + mario.Velocity.X)
+	nextPixelGroundCount := 0
+	for y := int(mario.Corner.TopLeft.Y); y <= int(mario.Corner.BottomLeft.Y); y++ {
+		tile := s.config.GetCollider(bgEntity.Position{X: float64(prevX), Y: float64(y)})
+		if tile == constants.GROUND {
+			nextPixelGroundCount++
+		}
+	}
+	if nextPixelGroundCount > 2 {
+		remainder := (prevX % constants.TILE_SILE)
+		switch remainder {
+		case 0:
+			mario.Velocity.X = float64(prevX) - mario.Position.X
+		default:
+			mario.Velocity.X = float64(prevX+(constants.TILE_SILE-remainder)) - mario.Position.X
+		}
 	}
 }
