@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	bgEntity "server/background/entities"
+	"server/common"
 	"server/config"
 	"server/constants"
 	rd "server/redis"
@@ -43,7 +44,7 @@ func (s *background) Setup() error {
 		for _, val := range bg.Ranges {
 			for x := val.X1 * constants.TILE_SILE; x <= val.X2*constants.TILE_SILE; x++ {
 				for y := val.Y1 * constants.TILE_SILE; y <= val.Y2*constants.TILE_SILE; y++ {
-					position := bgEntity.Position{X: float64(x), Y: float64(y)}
+					position := common.Position{X: float64(x), Y: float64(y)}
 					s.config.SetCollider(position, bg.Tile)
 				}
 			}
