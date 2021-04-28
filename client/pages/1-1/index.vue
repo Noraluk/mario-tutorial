@@ -16,16 +16,20 @@ export default {
       },
       background: {},
       tileSize: 16,
+      camera: {
+        x: 0,
+        y: 0,
+      },
     }
   },
   created() {
     socket.emit('setup')
   },
   mounted() {
-    this.$refs.bg.width = window.innerWidth
-    this.$refs.bg.height = window.innerHeight
+    this.$refs.bg.width = 16 * 16
+    this.$refs.bg.height = 16 * 16
     this.screen.context = this.$refs.bg.getContext('2d')
-    this.background = this.getCanvas(window.innerWidth, window.innerHeight)
+    this.background = this.getCanvas(256, 256)
 
     this.loadImage(require('@/assets/images/bg_tiles.png')).then((image) => {
       socket.on('draw', (data) => {
@@ -41,9 +45,20 @@ export default {
             this.tileSize,
             this.tileSize
           )
+          window.camera = data.camera.position
+          this.camera = data.camera
+          this.tile = this.getCanvas(256 + this.camera.position.x, 256)
           e.ranges.forEach((range) => {
             this.drawBG(block, range, e.tile)
           })
+
+          this.background
+            .getContext('2d')
+            .drawImage(
+              this.tile,
+              -data.camera.position.x,
+              -data.camera.position.y
+            )
         })
       })
     })
@@ -59,14 +74,18 @@ export default {
         )
         this.background
           .getContext('2d')
-          .drawImage(buffer, mario.position.x, mario.position.y)
+          .drawImage(
+            buffer,
+            mario.position.x - this.camera.position.x,
+            mario.position.y - this.camera.position.y
+          )
         this.background.getContext('2d').strokeStyle = 'blue'
         this.background.getContext('2d').beginPath()
         this.background
           .getContext('2d')
           .rect(
-            mario.position.x,
-            mario.position.y,
+            mario.position.x - this.camera.position.x,
+            mario.position.y - this.camera.position.y,
             this.tileSize,
             this.tileSize
           )
@@ -79,13 +98,13 @@ export default {
     window.addEventListener('keydown', function (e) {
       switch (e.code) {
         case 'KeyD':
-          socket.emit('right')
+          socket.emit('draw', 'right')
           break
         case 'KeyA':
-          socket.emit('left')
+          socket.emit('draw', 'left')
           break
         case 'KeyW':
-          socket.emit('up')
+          socket.emit('draw', 'up')
           break
       }
     })
@@ -113,17 +132,17 @@ export default {
         .drawImage(image, x, y, width, height, 0, 0, width, height)
       return buffer
     },
-    drawBG(block, boundary, tile) {
-      for (let i = boundary.x1; i < boundary.x2; i++) {
-        for (let j = boundary.y1; j < boundary.y2; j++) {
-          this.background.getContext('2d').drawImage(block, i * 16, j * 16)
+    drawBG(block, range, tile) {
+      for (let i = range.x1; i < range.x2; i++) {
+        for (let j = range.y1; j < range.y2; j++) {
+          this.tile.getContext('2d').drawImage(block, i * 16, j * 16)
           if (tile === 'ground') {
-            this.background.getContext('2d').strokeStyle = 'red'
-            this.background.getContext('2d').beginPath()
-            this.background
+            this.tile.getContext('2d').strokeStyle = 'red'
+            this.tile.getContext('2d').beginPath()
+            this.tile
               .getContext('2d')
               .rect(i * 16, j * 16, this.tileSize, this.tileSize)
-            this.background.getContext('2d').stroke()
+            this.tile.getContext('2d').stroke()
           }
         }
       }
