@@ -6,7 +6,9 @@ import (
 
 	bgEntity "server/background/entities"
 	bgService "server/background/services"
+	"server/common"
 	"server/config"
+	"server/constants"
 	marioEntity "server/mario/entities"
 	marioService "server/mario/services"
 
@@ -14,17 +16,52 @@ import (
 	socketio "github.com/googollee/go-socket.io"
 )
 
-type Screen struct {
-	Background []bgEntity.Background   `json:"backgrounds"`
-	Colliders  []bgEntity.TileCollider `json:"colliders"`
+type Camera struct {
+	Size     common.Size     `json:"size"`
+	Position common.Position `json:"position"`
 }
 
-func getScreen(backgroundService bgService.Background) Screen {
+type Screen struct {
+	Background []bgEntity.Background `json:"backgrounds"`
+	Camera     Camera                `json:"camera"`
+	Mario      *marioEntity.Mario    `json:"mario"`
+}
+
+func getScreen(config config.Config, backgroundService bgService.Background, mario *marioEntity.Mario) Screen {
 	level, err := backgroundService.GetBackground()
 	if err != nil {
 		log.Fatal(err)
 	}
-	screen := Screen{Background: level.Backgrounds, Colliders: backgroundService.GetColliders()}
+
+	camera := Camera{Position: common.Position{X: 0, Y: 0}, Size: common.Size{Width: 256, Height: 256}}
+	if mario.Position.X >= constants.HALF_SCREEN {
+		camera.Position.X = mario.Position.X - constants.HALF_SCREEN
+	}
+
+	cameraStart := camera.Position.X
+	cameraEnd := int(camera.Position.X+constants.TILE_SILE) + camera.Size.Width
+
+	for i, bg := range level.Backgrounds {
+		newRanges := []bgEntity.Ranges{}
+		for _, val := range bg.Ranges {
+			x1 := val.X1 * constants.TILE_SILE
+			x2 := val.X2 * constants.TILE_SILE
+
+			if (cameraStart > float64(x1) && cameraStart > float64(x2)) || (x1 > cameraEnd && x2 > cameraEnd) {
+				continue
+			}
+			newRange := bgEntity.Ranges{X1: x1 / constants.TILE_SILE, X2: x2 / constants.TILE_SILE, Y1: val.Y1, Y2: val.Y2, TileSize: common.Size{Width: int(constants.TILE_SILE), Height: int(constants.TILE_SILE)}}
+			if cameraStart > float64(x1) && float64(x2) > cameraStart {
+				newRange = bgEntity.Ranges{X1: int(cameraStart / constants.TILE_SILE), X2: x2 / int(constants.TILE_SILE), Y1: val.Y1, Y2: val.Y2, TileSize: common.Size{Width: (val.X2 - int(cameraStart)) / constants.TILE_SILE, Height: int(constants.TILE_SILE)}}
+			} else if cameraEnd > x1 && x2 > cameraEnd {
+				newRange = bgEntity.Ranges{X1: x1 / constants.TILE_SILE, X2: cameraEnd / constants.TILE_SILE, Y1: val.Y1, Y2: val.Y2, TileSize: common.Size{Width: (cameraEnd - val.X1) / constants.TILE_SILE, Height: int(constants.TILE_SILE)}}
+			}
+			newRanges = append(newRanges, newRange)
+		}
+		level.Backgrounds[i].Ranges = newRanges
+	}
+
+	screen := Screen{Background: level.Backgrounds, Mario: mario, Camera: camera}
 	return screen
 }
 
@@ -70,17 +107,30 @@ func main() {
 
 	var mario *marioEntity.Mario
 	server.OnEvent("/", "setup", func(s socketio.Conn, msg string) {
-		mario = &marioEntity.Mario{X: 276, Y: 44, Width: 16, Height: 16, Position: bgEntity.Position{X: 0, Y: 0}, Velocity: marioEntity.Velocity{X: 0, Y: 0.1}}
+		mario = &marioEntity.Mario{X: 276, Y: 44, Width: 16, Height: 16, Position: common.Position{X: 0, Y: 0}, Velocity: marioEntity.Velocity{X: 0, Y: 0.1}}
 		err = backgroundService.Setup()
 		if err != nil {
 			log.Fatal("setup error ", err.Error())
 		}
-		s.Emit("draw", getScreen(backgroundService))
+
+		s.Emit("draw", getScreen(config, backgroundService, mario))
 		s.Emit("drawMario", mario)
 	})
 
 	server.OnEvent("/", "draw", func(s socketio.Conn, msg string) {
 		mario.SetCorner(config)
+
+		if msg == "right" {
+			marioService.MoveRight(mario)
+		} else if msg == "left" {
+			marioService.MoveLeft(mario)
+		} else if msg == "up" {
+			canFall := marioService.CanFall(mario)
+			if !canFall {
+				mario.Velocity.Y = -2.5
+				mario.Action = "jump"
+			}
+		}
 
 		mario.Velocity.Y += 0.05
 		if mario.Velocity.Y > 0 {
@@ -94,35 +144,13 @@ func main() {
 		mario.Position.Y += mario.Velocity.Y
 
 		if mario.Velocity.X != 0 || mario.Velocity.Y != 0 || mario.Action == "jump" {
-			s.Emit("draw", getScreen(backgroundService))
-			s.Emit("drawMario", mario)
+			screen := getScreen(config, backgroundService, mario)
+
+			s.Emit("draw", screen)
+			s.Emit("drawMario", screen.Mario)
 		}
 
 		mario.Velocity.X = 0
-	})
-
-	server.OnEvent("/", "right", func(s socketio.Conn, msg string) {
-		mario.SetCorner(config)
-		marioService.MoveRight(mario)
-		s.Emit("draw", getScreen(backgroundService))
-		s.Emit("drawMario", mario)
-	})
-
-	server.OnEvent("/", "left", func(s socketio.Conn, msg string) {
-		mario.SetCorner(config)
-		marioService.MoveLeft(mario)
-		s.Emit("draw", getScreen(backgroundService))
-		s.Emit("drawMario", mario)
-	})
-
-	server.OnEvent("/", "up", func(s socketio.Conn, msg string) {
-		canFall := marioService.CanFall(mario)
-		if !canFall {
-			mario.Velocity.Y = -2.5
-			mario.Action = "jump"
-			s.Emit("draw", getScreen(backgroundService))
-			s.Emit("drawMario", mario)
-		}
 	})
 
 	server.OnError("/", func(s socketio.Conn, e error) {
