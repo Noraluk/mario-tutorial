@@ -27,14 +27,15 @@ type Screen struct {
 	Mario      *marioEntity.Mario    `json:"mario"`
 }
 
+var camera Camera
+
 func getScreen(config config.Config, backgroundService bgService.Background, mario *marioEntity.Mario) Screen {
 	level, err := backgroundService.GetBackground()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	camera := Camera{Position: common.Position{X: 0, Y: 0}, Size: common.Size{Width: 256, Height: 256}}
-	if mario.Position.X >= constants.HALF_SCREEN {
+	if mario.Position.X >= constants.HALF_SCREEN && mario.Position.X < 3392-constants.HALF_SCREEN {
 		camera.Position.X = mario.Position.X - constants.HALF_SCREEN
 	}
 
@@ -112,6 +113,7 @@ func main() {
 		if err != nil {
 			log.Fatal("setup error ", err.Error())
 		}
+		camera = Camera{Position: common.Position{X: 0, Y: 0}, Size: common.Size{Width: 256, Height: 256}}
 
 		s.Emit("draw", getScreen(config, backgroundService, mario))
 		s.Emit("drawMario", mario)

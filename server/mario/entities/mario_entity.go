@@ -22,18 +22,18 @@ type Velocity struct {
 }
 
 type Corner struct {
-	TopLeft         common.Position `json:"topLeft"`
-	TopRight        common.Position `json:"topRight"`
-	BottomLeft      common.Position `json:"bottomLeft"`
-	BottomRight     common.Position `json:"bottomRight"`
-	CenterLeft      common.Position `json:"centerLeft"`
-	CenterRight     common.Position `json:"centerFront"`
-	TopLeftTile     string          `json:"topLeftTile"`
-	TopRightTile    string          `json:"topRightTile"`
-	BottomLeftTile  string          `json:"bottomLeftTile"`
-	BottomRightTile string          `json:"bottomRightTile"`
-	CenterLeftTile  string          `json:"centerLeftTile"`
-	CenterRightTile string          `json:"centerRightTile"`
+	TopLeft               common.Position `json:"topLeft"`
+	TopRight              common.Position `json:"topRight"`
+	BottomLeft            common.Position `json:"bottomLeft"`
+	BottomRight           common.Position `json:"bottomRight"`
+	CenterLeft            common.Position `json:"centerLeft"`
+	CenterRight           common.Position `json:"centerFront"`
+	IsTopLeftCollide      bool            `json:"isTopLeftCollide"`
+	IsTopRightCollide     bool            `json:"isTopRightCollide"`
+	IsBottomLeftCollide   bool            `json:"isBottomLeftCollide"`
+	IsBottomRighttCollide bool            `json:"isBottomRightCollide"`
+	IsCenterLeftCollide   bool            `json:"isCenterLeftCollide"`
+	IsCenterRightCollide  bool            `json:"isCenterRightCollide"`
 }
 
 func (e *Mario) SetCorner(config config.Config) {
@@ -44,35 +44,35 @@ func (e *Mario) SetCorner(config config.Config) {
 		X: float64(nextPositionX),
 		Y: float64(nextPositionY) + e.Height,
 	}
-	e.Corner.BottomLeftTile = config.GetCollider(e.Corner.BottomLeft)
+	e.Corner.IsBottomLeftCollide = config.GetCollider(e.Corner.BottomLeft)
 
 	e.Corner.BottomRight = common.Position{
 		X: float64(nextPositionX) + e.Width,
 		Y: float64(nextPositionY) + e.Height,
 	}
-	e.Corner.BottomRightTile = config.GetCollider(e.Corner.BottomRight)
+	e.Corner.IsBottomRighttCollide = config.GetCollider(e.Corner.BottomRight)
 
 	e.Corner.TopLeft = common.Position{
 		X: float64(nextPositionX),
 		Y: float64(nextPositionY),
 	}
-	e.Corner.TopLeftTile = config.GetCollider(e.Corner.TopLeft)
+	e.Corner.IsTopLeftCollide = config.GetCollider(e.Corner.TopLeft)
 
 	e.Corner.TopRight = common.Position{
 		X: float64(nextPositionX) + e.Width,
 		Y: float64(nextPositionY),
 	}
-	e.Corner.TopRightTile = config.GetCollider(e.Corner.TopRight)
+	e.Corner.IsTopRightCollide = config.GetCollider(e.Corner.TopRight)
 
 	e.Corner.CenterRight = common.Position{
 		X: float64(nextPositionX) + e.Width,
 		Y: float64(nextPositionY) + e.Height/2,
 	}
-	e.Corner.CenterRightTile = config.GetCollider(e.Corner.CenterRight)
+	e.Corner.IsCenterRightCollide = config.GetCollider(e.Corner.CenterRight)
 
 	e.Corner.CenterLeft = common.Position{
 		X: float64(nextPositionX),
 		Y: float64(nextPositionY) + e.Height/2,
 	}
-	e.Corner.CenterLeftTile = config.GetCollider(e.Corner.CenterLeft)
+	e.Corner.IsCenterLeftCollide = config.GetCollider(e.Corner.CenterLeft)
 }

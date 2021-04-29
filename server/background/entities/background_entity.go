@@ -11,9 +11,10 @@ type Ranges struct {
 }
 
 type Background struct {
-	Tile     string          `json:"tile"`
-	Position common.Position `json:"position"`
-	Ranges   []Ranges        `json:"ranges"`
+	Tile      string          `json:"tile"`
+	IsCollide bool            `json:"isCollide"`
+	Position  common.Position `json:"position"`
+	Ranges    []Ranges        `json:"ranges"`
 }
 
 type Level struct {

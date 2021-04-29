@@ -3,30 +3,30 @@ package config
 import "server/common"
 
 type Config interface {
-	SetCollider(position common.Position, tileName string)
-	GetCollider(position common.Position) string
-	GetColliders() map[common.Position]string
+	SetCollider(position common.Position, isCollide bool)
+	GetCollider(position common.Position) bool
+	GetColliders() map[common.Position]bool
 }
 
 type config struct {
-	Colliders map[common.Position]string
+	Colliders map[common.Position]bool
 }
 
 func New() Config {
-	colliders := make(map[common.Position]string)
+	colliders := make(map[common.Position]bool)
 	return &config{
 		Colliders: colliders,
 	}
 }
 
-func (c *config) SetCollider(position common.Position, tileName string) {
+func (c *config) SetCollider(position common.Position, tileName bool) {
 	c.Colliders[position] = tileName
 }
 
-func (c *config) GetCollider(position common.Position) string {
+func (c *config) GetCollider(position common.Position) bool {
 	return c.Colliders[position]
 }
 
-func (c *config) GetColliders() map[common.Position]string {
+func (c *config) GetColliders() map[common.Position]bool {
 	return c.Colliders
 }
