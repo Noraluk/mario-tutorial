@@ -49,7 +49,7 @@ export default {
           this.camera = data.camera
           this.tile = this.getCanvas(256 + this.camera.position.x, 256)
           e.ranges.forEach((range) => {
-            this.drawBG(block, range, e.tile)
+            this.drawBG(block, range, e.isCollide)
           })
 
           this.background
@@ -132,11 +132,11 @@ export default {
         .drawImage(image, x, y, width, height, 0, 0, width, height)
       return buffer
     },
-    drawBG(block, range, tile) {
+    drawBG(block, range, isCollide) {
       for (let i = range.x1; i < range.x2; i++) {
         for (let j = range.y1; j < range.y2; j++) {
           this.tile.getContext('2d').drawImage(block, i * 16, j * 16)
-          if (tile === 'ground') {
+          if (isCollide) {
             this.tile.getContext('2d').strokeStyle = 'red'
             this.tile.getContext('2d').beginPath()
             this.tile
