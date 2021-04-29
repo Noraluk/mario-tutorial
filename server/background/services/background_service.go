@@ -8,7 +8,6 @@ import (
 	"server/common"
 	"server/config"
 	"server/constants"
-	rd "server/redis"
 )
 
 var (
@@ -23,13 +22,11 @@ type Background interface {
 }
 
 type background struct {
-	redis  rd.RedisStorage
 	config config.Config
 }
 
 func New(config config.Config) Background {
 	return &background{
-		redis:  rd.New(),
 		config: config,
 	}
 }
