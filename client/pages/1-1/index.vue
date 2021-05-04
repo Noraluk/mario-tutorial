@@ -64,11 +64,11 @@ export default {
       socket.on('drawMario', (mario) => {
         const buffer = this.draw(
           image,
-          mario.actionImage.image.x,
-          mario.actionImage.image.y,
-          mario.actionImage.size.width,
-          mario.actionImage.size.height,
-          mario.action.includes('left')
+          mario.action.image.x,
+          mario.action.image.y,
+          mario.action.size.width,
+          mario.action.size.height,
+          mario.movement.includes('left')
         )
 
         this.background
