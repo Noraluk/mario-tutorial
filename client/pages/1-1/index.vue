@@ -16,10 +16,7 @@ export default {
       },
       background: {},
       tileSize: 16,
-      camera: {
-        x: 0,
-        y: 0,
-      },
+      camera: {},
     }
   },
   created() {
@@ -67,11 +64,13 @@ export default {
       socket.on('drawMario', (mario) => {
         const buffer = this.draw(
           image,
-          mario.x,
-          mario.y,
-          mario.width,
-          mario.height
+          mario.actionImage.image.x,
+          mario.actionImage.image.y,
+          mario.actionImage.size.width,
+          mario.actionImage.size.height,
+          mario.action.includes('left')
         )
+
         this.background
           .getContext('2d')
           .drawImage(
@@ -91,20 +90,20 @@ export default {
           )
         this.background.getContext('2d').stroke()
         this.screen.context.drawImage(this.background, 0, 0)
-        socket.emit('draw')
+        socket.emit('fall')
       })
     })
 
     window.addEventListener('keydown', function (e) {
       switch (e.code) {
         case 'KeyD':
-          socket.emit('draw', 'right')
+          socket.emit('right')
           break
         case 'KeyA':
-          socket.emit('draw', 'left')
+          socket.emit('left')
           break
         case 'KeyW':
-          socket.emit('draw', 'up')
+          socket.emit('jump')
           break
       }
     })
@@ -125,11 +124,16 @@ export default {
       buffer.height = height
       return buffer
     },
-    draw(image, x, y, width, height) {
+    draw(image, x, y, width, height, isFlip = false) {
       const buffer = this.getCanvas(width, height)
-      buffer
-        .getContext('2d')
-        .drawImage(image, x, y, width, height, 0, 0, width, height)
+      const context = buffer.getContext('2d')
+
+      if (isFlip) {
+        context.scale(-1, 1)
+        context.translate(-width, 0)
+      }
+
+      context.drawImage(image, x, y, width, height, 0, 0, width, height)
       return buffer
     },
     drawBG(block, range, isCollide) {
