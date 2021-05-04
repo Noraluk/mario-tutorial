@@ -3,68 +3,24 @@ package main
 import (
 	"fmt"
 	"log"
+	"strings"
 
-	bgEntity "server/background/entities"
 	bgService "server/background/services"
-	"server/common"
 	"server/config"
-	"server/constants"
 	marioEntity "server/mario/entities"
 	marioService "server/mario/services"
+	screenEntity "server/screen/entities"
+	screenService "server/screen/services"
 
 	"github.com/gin-gonic/gin"
 	socketio "github.com/googollee/go-socket.io"
 )
 
-type Camera struct {
-	Size     common.Size     `json:"size"`
-	Position common.Position `json:"position"`
-}
-
-type Screen struct {
-	Background []bgEntity.Background `json:"backgrounds"`
-	Camera     Camera                `json:"camera"`
-	Mario      *marioEntity.Mario    `json:"mario"`
-}
-
-var camera Camera
-
-func getScreen(config config.Config, backgroundService bgService.Background, mario *marioEntity.Mario) Screen {
-	level, err := backgroundService.GetBackground()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if mario.Position.X >= constants.HALF_SCREEN && mario.Position.X < 3392-constants.HALF_SCREEN {
-		camera.Position.X = mario.Position.X - constants.HALF_SCREEN
-	}
-
-	cameraStart := camera.Position.X
-	cameraEnd := int(camera.Position.X+constants.TILE_SILE) + camera.Size.Width
-
-	for i, bg := range level.Backgrounds {
-		newRanges := []bgEntity.Ranges{}
-		for _, val := range bg.Ranges {
-			x1 := val.X1 * constants.TILE_SILE
-			x2 := val.X2 * constants.TILE_SILE
-
-			if (cameraStart > float64(x1) && cameraStart > float64(x2)) || (x1 > cameraEnd && x2 > cameraEnd) {
-				continue
-			}
-			newRange := bgEntity.Ranges{X1: x1 / constants.TILE_SILE, X2: x2 / constants.TILE_SILE, Y1: val.Y1, Y2: val.Y2, TileSize: common.Size{Width: int(constants.TILE_SILE), Height: int(constants.TILE_SILE)}}
-			if cameraStart > float64(x1) && float64(x2) > cameraStart {
-				newRange = bgEntity.Ranges{X1: int(cameraStart / constants.TILE_SILE), X2: x2 / int(constants.TILE_SILE), Y1: val.Y1, Y2: val.Y2, TileSize: common.Size{Width: (val.X2 - int(cameraStart)) / constants.TILE_SILE, Height: int(constants.TILE_SILE)}}
-			} else if cameraEnd > x1 && x2 > cameraEnd {
-				newRange = bgEntity.Ranges{X1: x1 / constants.TILE_SILE, X2: cameraEnd / constants.TILE_SILE, Y1: val.Y1, Y2: val.Y2, TileSize: common.Size{Width: (cameraEnd - val.X1) / constants.TILE_SILE, Height: int(constants.TILE_SILE)}}
-			}
-			newRanges = append(newRanges, newRange)
-		}
-		level.Backgrounds[i].Ranges = newRanges
-	}
-
-	screen := Screen{Background: level.Backgrounds, Mario: mario, Camera: camera}
-	return screen
-}
+var (
+	screen       *screenEntity.Screen
+	actionIndex  = 0
+	marioActions = marioEntity.NewActions()
+)
 
 func GinMiddleware(allowOrigin string) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -88,6 +44,7 @@ func main() {
 	config := config.New()
 	backgroundService := bgService.New(config)
 	marioService := marioService.New(config)
+	screenService := screenService.New(backgroundService)
 	router := gin.New()
 
 	server, err := socketio.NewServer(nil)
@@ -106,53 +63,89 @@ func main() {
 		s.Emit("reply", "have "+msg)
 	})
 
-	var mario *marioEntity.Mario
 	server.OnEvent("/", "setup", func(s socketio.Conn, msg string) {
-		mario = &marioEntity.Mario{X: 276, Y: 44, Width: 16, Height: 16, Position: common.Position{X: 0, Y: 0}, Velocity: marioEntity.Velocity{X: 0, Y: 0.1}}
+		mario := marioEntity.NewMario(marioActions[0])
 		err = backgroundService.Setup()
 		if err != nil {
 			log.Fatal("setup error ", err.Error())
 		}
-		camera = Camera{Position: common.Position{X: 0, Y: 0}, Size: common.Size{Width: 256, Height: 256}}
 
-		s.Emit("draw", getScreen(config, backgroundService, mario))
+		camera := screenEntity.NewCamera()
+		screen = screenService.GetScreen(camera, mario)
+		s.Emit("draw", screen)
 		s.Emit("drawMario", mario)
 	})
 
-	server.OnEvent("/", "draw", func(s socketio.Conn, msg string) {
-		mario.SetCorner(config)
+	server.OnEvent("/", "fall", func(s socketio.Conn, msg string) {
+		screen.Mario.SetCorner(config)
 
-		if msg == "right" {
-			marioService.MoveRight(mario)
-		} else if msg == "left" {
-			marioService.MoveLeft(mario)
-		} else if msg == "up" {
-			canFall := marioService.CanFall(mario)
-			if !canFall {
-				mario.Velocity.Y = -2.5
-				mario.Action = "jump"
-			}
-		}
-
-		mario.Velocity.Y += 0.05
-		if mario.Velocity.Y > 0 {
-			marioService.CanFall(mario)
-			mario.Action = ""
+		screen.Mario.Velocity.Y += 0.05
+		if screen.Mario.Velocity.Y > 0 {
+			marioService.CanFall(screen.Mario)
 		} else {
-			marioService.IsCeiling(mario)
+			marioService.IsCeiling(screen.Mario)
 		}
 
-		mario.Position.X += mario.Velocity.X
-		mario.Position.Y += mario.Velocity.Y
-
-		if mario.Velocity.X != 0 || mario.Velocity.Y != 0 || mario.Action == "jump" {
-			screen := getScreen(config, backgroundService, mario)
-
-			s.Emit("draw", screen)
-			s.Emit("drawMario", screen.Mario)
+		if screen.Mario.Velocity.Y == 0 && strings.Contains(screen.Mario.Movement, "jump") {
+			screen.Mario.Action = marioActions[0]
+			screen.Mario.Movement = strings.Replace(screen.Mario.Movement, "jump", "", -1)
 		}
 
-		mario.Velocity.X = 0
+		screen.Mario.Position.X += screen.Mario.Velocity.X
+		screen.Mario.Position.Y += screen.Mario.Velocity.Y
+
+		screen := screenService.GetScreen(screen.Camera, screen.Mario)
+
+		s.Emit("draw", screen)
+		s.Emit("drawMario", screen.Mario)
+
+		screen.Mario.Velocity.X = 0
+	})
+
+	server.OnEvent("/", "right", func(s socketio.Conn, msg string) {
+		screen.Mario.SetCorner(config)
+
+		marioService.MoveRight(screen.Mario)
+
+		if strings.Contains(screen.Mario.Movement, "jump") {
+			screen.Mario.Movement = "rightjump"
+		} else {
+			screen.Mario.Movement = "right"
+		}
+
+		if screen.Mario.Velocity.X > 0 && !strings.Contains(screen.Mario.Movement, "jump") {
+			actionIndex++
+			screen.Mario.Action = marioActions[actionIndex%4]
+		}
+	})
+
+	server.OnEvent("/", "left", func(s socketio.Conn, msg string) {
+		screen.Mario.SetCorner(config)
+
+		marioService.MoveLeft(screen.Mario)
+
+		if strings.Contains(screen.Mario.Movement, "jump") {
+			screen.Mario.Movement = "leftjump"
+		} else {
+			screen.Mario.Movement = "left"
+		}
+
+		if screen.Mario.Velocity.X < 0 && !strings.Contains(screen.Mario.Movement, "jump") {
+			actionIndex++
+			screen.Mario.Action = marioActions[actionIndex%4]
+		}
+	})
+
+	server.OnEvent("/", "jump", func(s socketio.Conn, msg string) {
+		screen.Mario.SetCorner(config)
+
+		canFall := marioService.CanFall(screen.Mario)
+		if !canFall {
+			screen.Mario.Velocity.Y = -2.5
+			screen.Mario.Movement = fmt.Sprintf("%sjump", screen.Mario.Movement)
+
+			screen.Mario.Action = marioActions[3]
+		}
 	})
 
 	server.OnError("/", func(s socketio.Conn, e error) {

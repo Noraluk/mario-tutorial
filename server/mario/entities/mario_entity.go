@@ -6,14 +6,15 @@ import (
 )
 
 type Mario struct {
-	X        int             `json:"x"`
-	Y        int             `json:"y"`
-	Width    float64         `json:"width"`
-	Height   float64         `json:"height"`
+	Action   Action          `json:"action"`
 	Position common.Position `json:"position"`
 	Velocity Velocity        `json:"velocity"`
-	Action   string          `json:"action"`
+	Movement string          `json:"movement"`
 	Corner   Corner          `json:"corner"`
+}
+
+func NewMario(action Action) *Mario {
+	return &Mario{Action: action, Position: common.Position{X: 0, Y: 0}, Velocity: Velocity{X: 0, Y: 0.1}}
 }
 
 type Velocity struct {
@@ -42,13 +43,13 @@ func (e *Mario) SetCorner(config config.Config) {
 
 	e.Corner.BottomLeft = common.Position{
 		X: float64(nextPositionX),
-		Y: float64(nextPositionY) + e.Height,
+		Y: float64(nextPositionY) + float64(e.Action.Size.Height),
 	}
 	e.Corner.IsBottomLeftCollide = config.GetCollider(e.Corner.BottomLeft)
 
 	e.Corner.BottomRight = common.Position{
-		X: float64(nextPositionX) + e.Width,
-		Y: float64(nextPositionY) + e.Height,
+		X: float64(nextPositionX + e.Action.Size.Width),
+		Y: float64(nextPositionY + e.Action.Size.Height),
 	}
 	e.Corner.IsBottomRighttCollide = config.GetCollider(e.Corner.BottomRight)
 
@@ -59,20 +60,38 @@ func (e *Mario) SetCorner(config config.Config) {
 	e.Corner.IsTopLeftCollide = config.GetCollider(e.Corner.TopLeft)
 
 	e.Corner.TopRight = common.Position{
-		X: float64(nextPositionX) + e.Width,
+		X: float64(nextPositionX + e.Action.Size.Width),
 		Y: float64(nextPositionY),
 	}
 	e.Corner.IsTopRightCollide = config.GetCollider(e.Corner.TopRight)
 
 	e.Corner.CenterRight = common.Position{
-		X: float64(nextPositionX) + e.Width,
-		Y: float64(nextPositionY) + e.Height/2,
+		X: float64(nextPositionX + e.Action.Size.Width),
+		Y: float64(nextPositionY + e.Action.Size.Height/2),
 	}
 	e.Corner.IsCenterRightCollide = config.GetCollider(e.Corner.CenterRight)
 
 	e.Corner.CenterLeft = common.Position{
 		X: float64(nextPositionX),
-		Y: float64(nextPositionY) + e.Height/2,
+		Y: float64(nextPositionY + e.Action.Size.Height/2),
 	}
 	e.Corner.IsCenterLeftCollide = config.GetCollider(e.Corner.CenterLeft)
+}
+
+type Action struct {
+	Name  string          `json:"name"`
+	Image common.Position `json:"image"`
+	Size  common.Size     `json:"size"`
+}
+
+func NewActions() []Action {
+	defaultSize := common.Size{Width: 16, Height: 16}
+
+	actions := []Action{}
+	actions = append(actions, Action{Name: "stand", Image: common.Position{X: 276, Y: 44}, Size: defaultSize})
+	actions = append(actions, Action{Name: "run-1", Image: common.Position{X: 290, Y: 44}, Size: defaultSize})
+	actions = append(actions, Action{Name: "run-2", Image: common.Position{X: 304, Y: 43}, Size: defaultSize})
+	actions = append(actions, Action{Name: "run-3", Image: common.Position{X: 321, Y: 44}, Size: defaultSize})
+
+	return actions
 }

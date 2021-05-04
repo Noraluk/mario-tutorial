@@ -50,7 +50,7 @@ func (s *mario) CanFall(mario *marioEntity.Mario) bool {
 	}
 	if nextPixelGroundCount < 15 {
 		remainder := nextY % constants.TILE_SILE
-		distance := float64(nextY-remainder) - (mario.Position.Y + mario.Height)
+		distance := float64(nextY-remainder) - (mario.Position.Y + float64(mario.Action.Size.Height))
 		mario.Velocity.Y = distance
 		return true
 	}
@@ -98,9 +98,10 @@ func (s *mario) MoveRight(mario *marioEntity.Mario) {
 	}
 	if nextPixelGroundCount > 2 {
 		remainder := nextX % constants.TILE_SILE
-		distance := float64(nextX-remainder) - (mario.Position.X + mario.Width)
+		distance := float64(nextX-remainder) - (mario.Position.X + float64(mario.Action.Size.Width))
 		mario.Velocity.X = distance
 	}
+
 }
 
 func (s *mario) MoveLeft(mario *marioEntity.Mario) {
