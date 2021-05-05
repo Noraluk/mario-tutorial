@@ -89,6 +89,8 @@ func main() {
 		if screen.Mario.Velocity.Y == 0 && strings.Contains(screen.Mario.Movement, "jump") {
 			screen.Mario.Action = marioActions[0]
 			screen.Mario.Movement = strings.Replace(screen.Mario.Movement, "jump", "", -1)
+		} else if screen.Mario.Velocity.Y != 0 {
+			screen.Mario.Action = marioActions[3]
 		}
 
 		screen.Mario.Position.X += screen.Mario.Velocity.X
@@ -141,7 +143,7 @@ func main() {
 
 		canFall := marioService.CanFall(screen.Mario)
 		if !canFall {
-			screen.Mario.Velocity.Y = -2.5
+			screen.Mario.Velocity.Y = -2.7
 			screen.Mario.Movement = fmt.Sprintf("%sjump", screen.Mario.Movement)
 
 			screen.Mario.Action = marioActions[3]
