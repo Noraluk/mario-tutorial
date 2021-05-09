@@ -10,19 +10,15 @@ import (
 	"server/constants"
 )
 
-var (
-	colliders []bgEntity.TileCollider
-)
-
 type Background interface {
 	Setup() error
-	GetBackground() (*bgEntity.Level, error)
-	GetColliders() []bgEntity.TileCollider
-	SetColliders(colliders []bgEntity.TileCollider)
+	SetBackground() error
+	GetBackground() bgEntity.Level
 }
 
 type background struct {
 	config config.Config
+	level  bgEntity.Level
 }
 
 func New(config config.Config) Background {
@@ -32,10 +28,7 @@ func New(config config.Config) Background {
 }
 
 func (s *background) Setup() error {
-	level, err := s.GetBackground()
-	if err != nil {
-		return err
-	}
+	level := s.GetBackground()
 
 	for _, bg := range level.Backgrounds {
 		for _, val := range bg.Ranges {
@@ -50,31 +43,28 @@ func (s *background) Setup() error {
 	return nil
 }
 
-func (s *background) GetBackground() (*bgEntity.Level, error) {
+func (s *background) SetBackground() error {
 	oneToOne, err := os.Open("static/levels/1-1.json")
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer oneToOne.Close()
 
 	b, err := ioutil.ReadAll(oneToOne)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	var level bgEntity.Level
 	err = json.Unmarshal(b, &level)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return &level, nil
+	s.level = level
+	return nil
 }
 
-func (s *background) GetColliders() []bgEntity.TileCollider {
-	return colliders
-}
-
-func (s *background) SetColliders(newColliders []bgEntity.TileCollider) {
-	colliders = newColliders
+func (s *background) GetBackground() bgEntity.Level {
+	return s.level
 }

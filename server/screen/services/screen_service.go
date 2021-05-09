@@ -1,8 +1,6 @@
 package screenService
 
 import (
-	"log"
-	"server/common"
 	"server/constants"
 	marioEntity "server/mario/entities"
 
@@ -25,38 +23,44 @@ func New(bgService bgService.Background) Screen {
 	}
 }
 
+var delay = 0
+
 func (s *screen) GetScreen(camera *screenEntity.Camera, mario *marioEntity.Mario) *screenEntity.Screen {
-	level, err := s.bgService.GetBackground()
-	if err != nil {
-		log.Fatal(err)
-	}
+	level := s.bgService.GetBackground()
 
 	if mario.Position.X >= constants.HALF_SCREEN && mario.Position.X < 3392-constants.HALF_SCREEN {
-		camera.Position.X = mario.Position.X - constants.HALF_SCREEN
+		camera.Position.X = mario.Position.X - constants.HALF_SCREEN - 2
 	}
 
-	cameraStart := camera.Position.X
+	cameraStart := int(camera.Position.X)
 	cameraEnd := int(camera.Position.X+constants.TILE_SILE) + camera.Size.Width
 
+	newBGs := []bgEntity.Background{}
 	for i, bg := range level.Backgrounds {
-		newRanges := []bgEntity.Ranges{}
+		if len(bg.Animation.Frames) > 0 && delay%bg.Animation.Duration == 0 {
+			level.Backgrounds[i].Position = bg.Animation.Frames[bg.Animation.Current%(len(bg.Animation.Frames))]
+			level.Backgrounds[i].Animation.Current++
+		}
+
+		newRanges := []bgEntity.Range{}
 		for _, val := range bg.Ranges {
 			x1 := val.X1 * constants.TILE_SILE
 			x2 := val.X2 * constants.TILE_SILE
 
-			if (cameraStart > float64(x1) && cameraStart > float64(x2)) || (x1 > cameraEnd && x2 > cameraEnd) {
-				continue
+			if (x1 >= cameraStart && x2 >= cameraStart) && (cameraEnd >= x1 && cameraEnd >= x2) {
+				newRanges = append(newRanges, bgEntity.NewRange(val.X1, val.X2, val.Y1, val.Y2))
+			} else if cameraStart >= x1 && x2 >= cameraEnd {
+				newRanges = append(newRanges, bgEntity.NewRange(cameraStart/int(constants.TILE_SILE), cameraEnd/int(constants.TILE_SILE), val.Y1, val.Y2))
+			} else if x2 > cameraEnd && (x1 >= cameraStart && x1 <= cameraEnd) {
+				newRanges = append(newRanges, bgEntity.NewRange(val.X1, cameraEnd/int(constants.TILE_SILE), val.Y1, val.Y2))
+			} else if cameraStart > x1 && (x2 >= cameraStart && x2 <= cameraEnd) {
+				newRanges = append(newRanges, bgEntity.NewRange(cameraStart/int(constants.TILE_SILE), val.X2, val.Y1, val.Y2))
 			}
-			newRange := bgEntity.Ranges{X1: x1 / constants.TILE_SILE, X2: x2 / constants.TILE_SILE, Y1: val.Y1, Y2: val.Y2, TileSize: common.Size{Width: int(constants.TILE_SILE), Height: int(constants.TILE_SILE)}}
-			if cameraStart > float64(x1) && float64(x2) > cameraStart {
-				newRange = bgEntity.Ranges{X1: int(cameraStart / constants.TILE_SILE), X2: x2 / int(constants.TILE_SILE), Y1: val.Y1, Y2: val.Y2, TileSize: common.Size{Width: (val.X2 - int(cameraStart)) / constants.TILE_SILE, Height: int(constants.TILE_SILE)}}
-			} else if cameraEnd > x1 && x2 > cameraEnd {
-				newRange = bgEntity.Ranges{X1: x1 / constants.TILE_SILE, X2: cameraEnd / constants.TILE_SILE, Y1: val.Y1, Y2: val.Y2, TileSize: common.Size{Width: (cameraEnd - val.X1) / constants.TILE_SILE, Height: int(constants.TILE_SILE)}}
-			}
-			newRanges = append(newRanges, newRange)
 		}
-		level.Backgrounds[i].Ranges = newRanges
+
+		newBGs = append(newBGs, bgEntity.NewBackground(bg.Tile, bg.IsCollide, bg.Position, newRanges, bg.Animation))
 	}
 
-	return screenEntity.NewScreen(level.Backgrounds, camera, mario)
+	delay++
+	return screenEntity.NewScreen(newBGs, camera, mario)
 }

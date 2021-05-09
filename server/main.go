@@ -64,6 +64,11 @@ func main() {
 	})
 
 	server.OnEvent("/", "setup", func(s socketio.Conn, msg string) {
+		err := backgroundService.SetBackground()
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		mario := marioEntity.NewMario(marioActions[0])
 		err = backgroundService.Setup()
 		if err != nil {
