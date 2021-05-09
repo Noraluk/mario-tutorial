@@ -30,6 +30,10 @@ export default {
 
     this.loadImage(require('@/assets/images/bg_tiles.png')).then((image) => {
       socket.on('draw', (data) => {
+        window.camera = data.camera.position
+        this.camera = data.camera
+
+        this.tile = this.getCanvas(256 + this.camera.position.x, 256)
         data.backgrounds.forEach((e) => {
           const block = this.draw(
             image,
@@ -42,9 +46,7 @@ export default {
             this.tileSize,
             this.tileSize
           )
-          window.camera = data.camera.position
-          this.camera = data.camera
-          this.tile = this.getCanvas(256 + this.camera.position.x, 256)
+
           e.ranges.forEach((range) => {
             this.drawBG(block, range, e.isCollide)
           })
@@ -53,8 +55,8 @@ export default {
             .getContext('2d')
             .drawImage(
               this.tile,
-              -data.camera.position.x,
-              -data.camera.position.y
+              -this.camera.position.x,
+              -this.camera.position.y
             )
         })
       })
