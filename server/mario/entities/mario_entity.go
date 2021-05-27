@@ -92,6 +92,7 @@ func NewActions() []Action {
 	actions = append(actions, Action{Name: "run-1", Image: common.Position{X: 290, Y: 44}, Size: defaultSize})
 	actions = append(actions, Action{Name: "run-2", Image: common.Position{X: 304, Y: 43}, Size: defaultSize})
 	actions = append(actions, Action{Name: "run-3", Image: common.Position{X: 321, Y: 44}, Size: defaultSize})
+	actions = append(actions, Action{Name: "break", Image: common.Position{X: 337, Y: 44}, Size: defaultSize})
 
 	return actions
 }

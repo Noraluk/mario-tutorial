@@ -18,12 +18,14 @@ type Mario interface {
 type mario struct {
 	backgroundService bgService.Background
 	config            config.Config
+	marioActions      []marioEntity.Action
 }
 
-func New(config config.Config) Mario {
+func New(config config.Config, marioActions []marioEntity.Action) Mario {
 	return &mario{
 		backgroundService: bgService.New(config),
 		config:            config,
+		marioActions:      marioActions,
 	}
 }
 
@@ -75,7 +77,13 @@ func (s *mario) IsCeiling(mario *marioEntity.Mario) bool {
 }
 
 func (s *mario) MoveRight(mario *marioEntity.Mario) {
-	mario.Velocity.X = 5
+	if mario.Velocity.X < 0 {
+		mario.Action = s.marioActions[4]
+	}
+	mario.Velocity.X += 0.2
+	if mario.Velocity.X > 2 {
+		mario.Velocity.X = 2
+	}
 
 	currentPixelGroundCount := 0
 	for y := int(mario.Corner.TopRight.Y); y <= int(mario.Corner.BottomRight.Y); y++ {
@@ -83,9 +91,6 @@ func (s *mario) MoveRight(mario *marioEntity.Mario) {
 		if isCollide {
 			currentPixelGroundCount++
 		}
-	}
-	if currentPixelGroundCount > 2 {
-		mario.Velocity.X = 0
 	}
 
 	nextX := int(mario.Corner.TopRight.X + mario.Velocity.X)
@@ -96,16 +101,20 @@ func (s *mario) MoveRight(mario *marioEntity.Mario) {
 			nextPixelGroundCount++
 		}
 	}
-	if nextPixelGroundCount > 2 {
-		remainder := nextX % constants.TILE_SILE
-		distance := float64(nextX-remainder) - (mario.Position.X + float64(mario.Action.Size.Width))
-		mario.Velocity.X = distance
-	}
 
+	if currentPixelGroundCount > 2 || nextPixelGroundCount > 2 {
+		mario.Velocity.X = 0
+	}
 }
 
 func (s *mario) MoveLeft(mario *marioEntity.Mario) {
-	mario.Velocity.X = -5
+	if mario.Velocity.X > 0 {
+		mario.Action = s.marioActions[4]
+	}
+	mario.Velocity.X -= 0.2
+	if mario.Velocity.X < -2 {
+		mario.Velocity.X = -2
+	}
 
 	currentPixelGroundCount := 0
 	for y := int(mario.Corner.TopLeft.Y); y <= int(mario.Corner.BottomLeft.Y); y++ {
@@ -113,9 +122,6 @@ func (s *mario) MoveLeft(mario *marioEntity.Mario) {
 		if isCollide {
 			currentPixelGroundCount++
 		}
-	}
-	if currentPixelGroundCount > 2 {
-		mario.Velocity.X = 0
 	}
 
 	prevX := int(mario.Corner.TopLeft.X + mario.Velocity.X)
@@ -126,13 +132,8 @@ func (s *mario) MoveLeft(mario *marioEntity.Mario) {
 			nextPixelGroundCount++
 		}
 	}
-	if nextPixelGroundCount > 2 {
-		remainder := (prevX % constants.TILE_SILE)
-		switch remainder {
-		case 0:
-			mario.Velocity.X = float64(prevX) - mario.Position.X
-		default:
-			mario.Velocity.X = float64(prevX+(constants.TILE_SILE-remainder)) - mario.Position.X
-		}
+
+	if currentPixelGroundCount > 2 || nextPixelGroundCount > 2 {
+		mario.Velocity.X = 0
 	}
 }

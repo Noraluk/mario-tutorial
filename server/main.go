@@ -43,7 +43,7 @@ func GinMiddleware(allowOrigin string) gin.HandlerFunc {
 func main() {
 	config := config.New()
 	backgroundService := bgService.New(config)
-	marioService := marioService.New(config)
+	marioService := marioService.New(config, marioActions)
 	screenService := screenService.New(backgroundService)
 	router := gin.New()
 
@@ -96,6 +96,8 @@ func main() {
 			screen.Mario.Movement = strings.Replace(screen.Mario.Movement, "jump", "", -1)
 		} else if screen.Mario.Velocity.Y != 0 {
 			screen.Mario.Action = marioActions[3]
+		} else if screen.Mario.Velocity.X == 0 {
+			screen.Mario.Action = marioActions[0]
 		}
 
 		screen.Mario.Position.X += screen.Mario.Velocity.X
@@ -106,7 +108,17 @@ func main() {
 		s.Emit("draw", screen)
 		s.Emit("drawMario", screen.Mario)
 
-		screen.Mario.Velocity.X = 0
+		if screen.Mario.Velocity.X > 0 {
+			screen.Mario.Velocity.X -= 0.05
+			if screen.Mario.Velocity.X <= 0 {
+				screen.Mario.Velocity.X = 0
+			}
+		} else if screen.Mario.Velocity.X < 0 {
+			screen.Mario.Velocity.X += 0.05
+			if screen.Mario.Velocity.X >= 0 {
+				screen.Mario.Velocity.X = 0
+			}
+		}
 	})
 
 	server.OnEvent("/", "right", func(s socketio.Conn, msg string) {
